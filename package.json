@@ -1,0 +1,54 @@
+{
+  "name": "log-step",
+  "version": "0.1.1",
+  "description": "Minimal structured step logger for scripts. Numbered steps with timing, pass/fail state, and nested sub-steps. Zero dependencies.",
+  "keywords": [
+    "cli",
+    "logger",
+    "step",
+    "script",
+    "terminal",
+    "timing",
+    "build",
+    "pipeline",
+    "automation"
+  ],
+  "author": "Mohit Kumar Singla <mhtkumar46@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mohitsingla46/log-step"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "node --import tsx/esm --test test/**/*.test.ts",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}
