@@ -1,15 +1,13 @@
-import { performance } from "node:perf_hooks";
-
 type Outcome = "pass" | "fail" | "warn";
 
-interface StepResult {
+export interface StepResult {
 	pass: (msg?: string) => void;
 	fail: (msg?: string) => void;
 	warn: (msg?: string) => void;
 	sub: (n: number | string, label: string) => SubStepResult;
 }
 
-interface SubStepResult {
+export interface SubStepResult {
 	pass: (msg?: string) => void;
 	fail: (msg?: string) => void;
 	warn: (msg?: string) => void;
@@ -22,16 +20,17 @@ interface Summary {
 	warned: number;
 }
 
-// ANSI color codes
+// Only emit ANSI codes when writing to an actual terminal.
+// Piped output (files, CI log storage, etc.) will be plain text.
+const COLOR = process.stdout.isTTY === true;
+
 const c = {
-	reset: "\x1b[0m",
-	bold: "\x1b[1m",
-	dim: "\x1b[2m",
-	green: "\x1b[32m",
-	red: "\x1b[31m",
-	yellow: "\x1b[33m",
-	cyan: "\x1b[36m",
-	white: "\x1b[37m",
+	reset:  COLOR ? "\x1b[0m"  : "",
+	bold:   COLOR ? "\x1b[1m"  : "",
+	dim:    COLOR ? "\x1b[2m"  : "",
+	green:  COLOR ? "\x1b[32m" : "",
+	red:    COLOR ? "\x1b[31m" : "",
+	yellow: COLOR ? "\x1b[33m" : "",
 };
 
 const icons = {
@@ -65,6 +64,8 @@ function printLine(
 
 /**
  * Start a numbered step. Returns an object to mark it pass/fail/warn.
+ * The step is counted in the summary only when resolved (.pass/.fail/.warn).
+ * Calling a resolver more than once on the same step has no effect after the first call.
  *
  * @example
  * const s = step(1, "Build");
@@ -75,11 +76,17 @@ function printLine(
 export function step(n: number | string, label: string): StepResult {
 	const fullLabel = `${n}. ${label}`;
 	const start = performance.now();
-	_stats.total++;
+	let resolved = false;
 
 	function finish(outcome: Outcome, msg?: string): void {
+		if (resolved) return; // guard: ignore duplicate resolutions
+		resolved = true;
+
 		const elapsed = Math.round(performance.now() - start);
 		printLine(icons[outcome], fullLabel, elapsed, msg);
+
+		// Count total only on resolution so unresolved steps don't corrupt stats.
+		_stats.total++;
 		if (outcome === "pass") _stats.passed++;
 		else if (outcome === "fail") _stats.failed++;
 		else _stats.warned++;
@@ -93,8 +100,12 @@ export function step(n: number | string, label: string): StepResult {
 		sub(subN: number | string, subLabel: string): SubStepResult {
 			const subFullLabel = `${n}.${subN} ${subLabel}`;
 			const subStart = performance.now();
+			let subResolved = false;
 
 			function finishSub(outcome: Outcome, msg?: string): void {
+				if (subResolved) return; // guard: ignore duplicate resolutions
+				subResolved = true;
+
 				const elapsed = Math.round(performance.now() - subStart);
 				printLine(icons[outcome], subFullLabel, elapsed, msg, "  ");
 			}
@@ -122,7 +133,9 @@ export function autoStep(label: string): StepResult {
 }
 
 /**
- * Print a summary line after all steps complete.
+ * Print a final summary line showing total/passed/warned/failed counts.
+ * Calling this multiple times without reset() in between will print the
+ * same accumulated totals each time — call reset() first to start fresh.
  *
  * @example
  * summary();
@@ -141,7 +154,8 @@ export function summary(): void {
 }
 
 /**
- * Reset internal stats counters (useful between test runs).
+ * Reset all step counters and the auto-numbering counter.
+ * Useful between test runs or sequential batches.
  */
 export function reset(): void {
 	_stats.total = 0;
