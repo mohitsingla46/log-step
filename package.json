@@ -1,6 +1,6 @@
 {
   "name": "log-step",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Minimal structured step logger for scripts. Numbered steps with timing, pass/fail state, and nested sub-steps. Zero dependencies.",
   "keywords": [
     "cli",
